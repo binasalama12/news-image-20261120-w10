@@ -5,6 +5,7 @@ thirteen pictured stories, a dot-matrix world map and thirty-two more briefs.
 Every drawing is made here with PIL primitives; no photo is used anywhere."""
 
 import math
+import os
 import random
 from PIL import Image, ImageDraw, ImageFont
 
@@ -29,15 +30,21 @@ FL = "/usr/share/fonts/truetype/liberation/"
 def F(name, size):
     try:
         return ImageFont.truetype(FD + name, size)
-    except Exception:
-        return ImageFont.load_default()
+    except OSError:
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            return ImageFont.load_default()
 
 
 def SF(name, size):
     try:
         return ImageFont.truetype(FL + name, size)
-    except Exception:
-        return F("DejaVuSerif.ttf", size)
+    except OSError:
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            return F("DejaVuSerif.ttf", size)
 
 
 def SANS(sz):
@@ -608,8 +615,25 @@ def main():
            "drawings, drawn for this page.", font=SERIFI(13), fill=GREY)
 
     out = im.resize((1024, 1024), Image.LANCZOS)
-    out.save("entry.png")
-    print("wrote entry.png 1024x1024")
+    candidates = []
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR")
+    if out_dir:
+        candidates.append(out_dir)
+    candidates.append(".")
+    candidates.append(os.path.dirname(os.path.abspath(__file__)))
+    last_err = None
+    saved = None
+    for cand in candidates:
+        try:
+            target = os.path.join(cand, "entry.png")
+            out.save(target)
+            saved = target
+            break
+        except OSError as exc:
+            last_err = exc
+    if saved is None:
+        raise last_err
+    print("wrote %s 1024x1024" % saved)
 
 
 if __name__ == "__main__":
